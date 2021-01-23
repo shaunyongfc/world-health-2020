@@ -26,6 +26,7 @@ class MyUtils():
         return dfnew
     def collate_data(self, period):
         dfnew = pd.DataFrame(columns=['Location'])
+        dfnew.set_index('Location', inplace=True)
         for fname in all_files:
             dff = self.get_data(fname, indicator=True)
             dff = dff[dff['Period'] == period]
@@ -36,10 +37,12 @@ class MyUtils():
                     dff = dff[dff['Dim1'] == 'Total']
                 dff.drop('Dim1', axis=1, inplace=True)
             for index, row in dff.set_index('Location').iterrows():
-                if index in dfnew['Location'].tolist():
-                    dfnew.set_index('Location').loc[index, row['Indicator']] = row['First Tooltip']
+                if index in dfnew.index.tolist():
+                    dfnew.loc[index, row['Indicator']] = row['First Tooltip']
                 else:
-                    dfnew.append({'Location': index, row['Indicator']: row['First Tooltip']}, ignore_index=True)
+                    new_row = pd.DataFrame([[index, row['First Tooltip']]], columns=['Location', row['Indicator']])
+                    new_row.set_index('Location', inplace=True)
+                    dfnew = dfnew.append(new_row)
         return dfnew
     def df_difference(self, df1, df2, diff, cols=None, set_index=None):
         if set_index != None:
@@ -57,5 +60,9 @@ class MyUtils():
                 rowdict['Diff'] = df1.loc[index, diff] - row[diff]
                 dfnew = dfnew.append(rowdict, ignore_index=True)
         return dfnew
+    def column_lists(self):
+        for fname in all_files:
+            dff = self.get_data(fname, indicator=True)
+            print(dff.columns)
 
 my_utils = MyUtils()
