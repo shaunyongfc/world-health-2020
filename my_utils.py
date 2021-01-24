@@ -24,10 +24,11 @@ class MyUtils():
         if 'Indicator' in dfnew.columns.tolist() and not indicator:
             dfnew.drop('Indicator', axis=1, inplace=True)
         return dfnew
-    def collate_data(self, period):
+    def collate_period(self, period):
         dfnew = pd.DataFrame(columns=['Location'])
         dfnew.set_index('Location', inplace=True)
         for fname in all_files:
+            concat_list = [dfnew]
             dff = self.get_data(fname, indicator=True)
             dff = dff[dff['Period'] == period]
             if 'Dim1' in dfnew.columns.tolist():
@@ -42,7 +43,33 @@ class MyUtils():
                 else:
                     new_row = pd.DataFrame([[index, row['First Tooltip']]], columns=['Location', row['Indicator']])
                     new_row.set_index('Location', inplace=True)
-                    dfnew = dfnew.append(new_row)
+                    concat_list.append(new_row)
+            dfnew = pd.concat(concat_list)
+        return dfnew
+    def collate_latest(self):
+        dfnew = pd.DataFrame(columns=['Location'])
+        dfnew.set_index('Location', inplace=True)
+        for fname in all_files:
+            concat_list = [dfnew]
+            dff = self.get_data(fname, indicator=True)
+            if 'Dim1' in dfnew.columns.tolist():
+                if 'Both sexes' in set(dff['Dim1']):
+                    dff = dff[dff['Dim1'] == 'Both sexes']
+                elif 'Total' in set(dff['Dim1']):
+                    dff = dff[dff['Dim1'] == 'Total']
+                dff.drop('Dim1', axis=1, inplace=True)
+            for locationstr in set(dff['Location']):
+                dfflocation = dff[dff['Location'] == locationstr]
+                latestperiod = dfflocation['Period'].max()
+                dffindex = dfflocation[dfflocation['Period'] == latestperiod].index[0]
+                row = dfflocation.loc[dffindex]
+                if locationstr in dfnew.index.tolist():
+                    dfnew.loc[locationstr, row['Indicator']] = row['First Tooltip']
+                else:
+                    new_row = pd.DataFrame([[locationstr, row['First Tooltip']]], columns=['Location', row['Indicator']])
+                    new_row.set_index('Location', inplace=True)
+                    concat_list.append(new_row)
+            dfnew = pd.concat(concat_list)
         return dfnew
     def df_difference(self, df1, df2, diff, cols=None, set_index=None):
         if set_index != None:
