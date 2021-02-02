@@ -1,4 +1,5 @@
-import os
+import os, re
+import numpy as np
 import pandas as pd
 
 all_files = [
@@ -18,7 +19,7 @@ all_files = [
 
 class MyUtils():
     def __init__(self):
-        pass
+        self.rebrackets = re.compile(r'\[[\d.]+\-[\d.]+\]')
     def get_data(self, fname, indicator=False):
         dfnew = pd.read_csv(os.path.join('dataset', f"{fname}.csv"))
         if 'Indicator' in dfnew.columns.tolist() and not indicator:
@@ -71,6 +72,25 @@ class MyUtils():
                     concat_list.append(new_row)
             dfnew = pd.concat(concat_list)
         return dfnew
+    def remove_brackets(self, numstr):
+        try:
+            re_match = self.rebrackets.search(numstr)
+            try:
+                numstr = numstr[:re_match.start()].strip()
+                return float(numstr)
+            except AttributeError:
+                return np.nan
+        except TypeError:
+            return numstr
+    def df_latest_cleaned(self):
+        df = self.collate_latest()
+        df = df[df.isna().sum(axis=1) < 10]
+        cols = df.columns[df.dtypes == np.object].tolist()
+        for _, row in df.iterrows():
+            for col in cols:
+                df.loc[row.name, col] = self.remove_brackets(row[col])
+        df = df.fillna(df.mean())
+        return df
     def df_difference(self, df1, df2, diff, cols=None, set_index=None):
         if set_index != None:
             df1 = df1.set_index(set_index)
